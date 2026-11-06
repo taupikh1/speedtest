@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Speed Test">
+<meta name="theme-color" content="#070914">
 <title>Speed Test Realtime</title>
 <style>
 :root{--bg:#070914;--card:#12162b;--ln:#232949;--tx:#eef0ff;--mu:#7f87ad;--dl:#22b8ff;--ul:#b36bff;--ok:#2ee59d}
@@ -10,7 +15,8 @@
 body{margin:0;background:radial-gradient(120% 60% at 50% 0,#141a3a 0,var(--bg) 60%) no-repeat,var(--bg);color:var(--tx);font:16px -apple-system,system-ui,sans-serif;padding:max(14px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom))}
 .w{max-width:460px;margin:0 auto}
 h1{font-size:13px;letter-spacing:3px;text-align:center;color:var(--mu);margin:6px 0 4px;font-weight:600}
-#ph{text-align:center;font-size:13px;letter-spacing:2px;color:var(--dl);height:18px;font-weight:700}
+#srv{text-align:center;color:var(--mu);font-size:12px;min-height:16px}
+#ph{text-align:center;font-size:13px;letter-spacing:2px;color:var(--dl);height:22px;font-weight:700;margin-top:6px}
 .gw{position:relative;margin:2px auto 0;max-width:340px}
 svg{width:100%;display:block}
 .gt{fill:none;stroke:var(--ln);stroke-width:14;stroke-linecap:round}
@@ -24,24 +30,33 @@ canvas{width:100%;height:110px;background:var(--card);border-radius:16px;margin:
 #pb{height:100%;width:0;background:var(--ok);transition:width .2s}
 .g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
 .c{background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid var(--ln)}
+.c.f{grid-column:1/-1}
 .c small{color:var(--mu);display:flex;align-items:center;gap:6px;font-size:12px}
 .c small i{width:8px;height:8px;border-radius:50%;display:inline-block}
-.c b{font-size:24px;font-variant-numeric:tabular-nums;display:block;margin-top:4px}
+.c b{font-size:22px;font-variant-numeric:tabular-nums;display:block;margin-top:4px}
 .c em{font-style:normal;color:var(--mu);font-size:12px}
-details{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:4px 14px}
+details{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:4px 14px;margin-top:10px}
 summary{padding:10px 0;color:var(--mu);font-size:14px;cursor:pointer;list-style:none}
 .r{display:flex;justify-content:space-between;align-items:center;margin:8px 0 12px;gap:10px}
 .r span{color:var(--mu);font-size:14px}
 select,input{background:#0b0e20;color:var(--tx);border:1px solid var(--ln);border-radius:10px;padding:9px;font-size:15px;max-width:62%}
 input{width:62%}
-button{width:100%;margin-top:14px;padding:16px;border:0;border-radius:16px;font-size:17px;font-weight:700;letter-spacing:1px;background:linear-gradient(90deg,var(--dl),#5b8cff);color:#04121c}
+#lb{width:100%;max-width:100%;margin-top:4px}
+button{width:100%;margin-top:12px;padding:16px;border:0;border-radius:16px;font-size:17px;font-weight:700;letter-spacing:1px;background:linear-gradient(90deg,var(--dl),#5b8cff);color:#04121c}
 button.s{background:#ff5d6c;color:#fff}
+button.b2{background:var(--card);border:1px solid var(--ln);color:var(--tx);padding:12px;font-size:14px;letter-spacing:0;display:none}
+button.b3{background:transparent;border:1px solid var(--ln);color:var(--mu);padding:9px;font-size:13px;letter-spacing:0;margin:8px 0 10px}
 #m{color:var(--mu);font-size:13px;text-align:center;margin-top:12px;min-height:34px;line-height:1.4}
+.hr{display:grid;grid-template-columns:1.5fr 1fr 1fr .8fr;gap:6px;font-size:12px;padding:7px 0;border-bottom:1px solid var(--ln);font-variant-numeric:tabular-nums}
+.hr.h{color:var(--mu);font-size:11px}
+.hr span:first-child{overflow:hidden;text-overflow:ellipsis}
+.hp{color:var(--mu);font-size:12px;line-height:1.5}
 </style>
 </head>
 <body>
 <div class="w">
 <h1>SPEED TEST</h1>
+<div id="srv"></div>
 <div id="ph">SIAP</div>
 <div class="gw">
 <svg viewBox="0 0 200 112"><path class="gt" d="M20 100A80 80 0 0 1 180 100"/><path id="ga" d="M20 100A80 80 0 0 1 180 100"/></svg>
@@ -53,30 +68,50 @@ button.s{background:#ff5d6c;color:#fff}
 <div class="g">
 <div class="c"><small><i style="background:var(--dl)"></i>Download</small><b id="rd">-</b><em id="rdp">&nbsp;</em></div>
 <div class="c"><small><i style="background:var(--ul)"></i>Upload</small><b id="ru">-</b><em id="rup">&nbsp;</em></div>
-<div class="c"><small>Ping</small><b id="rp">-</b><em>latensi minimum</em></div>
-<div class="c"><small>Jitter</small><b id="rj">-</b><em>selisih antar-ping</em></div>
+<div class="c"><small>Ping</small><b id="rp">-</b><em>median 15 sampel</em></div>
+<div class="c"><small>Jitter</small><b id="rj">-</b><em>median selisih ping</em></div>
+<div class="c"><small>Latensi saat unduh</small><b id="rld">-</b><em id="rldp">&nbsp;</em></div>
+<div class="c"><small>Latensi saat unggah</small><b id="rlu">-</b><em id="rlup">&nbsp;</em></div>
+<div class="c f"><small>Kuota terpakai</small><b id="rq">-</b><em>estimasi unduh + unggah tes ini</em></div>
 </div>
+<input id="lb" list="lbl" placeholder="Label tes, mis. B3+B8 (untuk riwayat)" maxlength="30">
+<datalist id="lbl"><option value="Semua band"><option value="B3"><option value="B8"><option value="B3+B8"><option value="B1+B3+B8"></datalist>
+<button id="bt">MULAI</button>
+<button id="cp" class="b2">SALIN HASIL</button>
+<div id="m"></div>
+<details><summary>Riwayat &amp; perbandingan label</summary>
+<div class="hp">Rata-rata per label:</div>
+<div id="cmp"></div>
+<div class="hp" style="margin-top:12px">Tes terakhir:</div>
+<div id="hl"></div>
+<button id="hc" class="b3">Hapus riwayat</button>
+</details>
 <details><summary>Pengaturan</summary>
 <div class="r"><span>Server download</span><select id="sv"><option value="cf">Cloudflare</option><option value="custom">URL sendiri</option></select></div>
 <div class="r" id="ur" style="display:none"><span>URL file</span><input id="url" placeholder="https://.../file.zip"></div>
-<div class="r"><span>Koneksi</span><select id="cn"><option value="4">Multi (4)</option><option value="1">Tunggal</option></select></div>
+<div class="r"><span>Koneksi</span><select id="cn"><option value="4">Multi (4)</option><option value="8">Multi (8)</option><option value="1">Tunggal</option></select></div>
 <div class="r"><span>Durasi / fase</span><select id="du"><option value="8">8 detik</option><option value="12" selected>12 detik</option><option value="20">20 detik</option></select></div>
 <div class="r"><span>Tes upload</span><select id="uo"><option value="1">Ya</option><option value="0">Tidak</option></select></div>
 <div class="r"><span>Unit</span><select id="un"><option value="Mb">Mbps</option><option value="MB">MB/s</option></select></div>
+<div class="hp" style="padding-bottom:10px">Jadikan aplikasi: di Safari tekan Bagikan, lalu Tambah ke Layar Utama. Layar dijaga tetap menyala selama tes.</div>
 </details>
-<button id="bt">MULAI</button>
-<div id="m"></div>
 </div>
 <script>
 var $=function(i){return document.getElementById(i)};
-var S={on:false,live:false,total:0,err:null,ctrl:null,xhrs:[]};
-var R={p:null,j:null,d:null,u:null},cur=0,pts=[],colr='#22b8ff',smax=0,blob=null;
+var S={on:false,live:false,total:0,err:null,ctrl:null,xhrs:[],hid:false};
+var cur=0,pts=[],colr='#22b8ff',smax=0,blob=null,meta=null,wl=null,srvTxt='';
+function emp(){return{p:null,j:null,d:null,u:null,ld:null,lu:null,q:null}}
+var R=emp();
+var IATA={CGK:'Jakarta',SIN:'Singapura',KUL:'Kuala Lumpur',HKG:'Hong Kong',DPS:'Bali',BKK:'Bangkok',MNL:'Manila'};
 $('sv').onchange=function(){$('ur').style.display=this.value==='custom'?'flex':'none'};
 function U(){return $('un').value}
 function cv(mbs){return U()==='MB'?mbs:mbs*8}
 function f(x){return x>=100?x.toFixed(0):x>=10?x.toFixed(1):x.toFixed(2)}
 function unitTxt(){return U()==='MB'?'MB/s':'Mbps'}
+function med(a){if(!a.length)return 0;var b=a.slice().sort(function(x,y){return x-y}),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2}
+function grade(d){return d<=30?'A':d<=60?'B':d<=150?'C':d<=300?'D':'F'}
 function niceMax(x){var a=U()==='MB'?[2,5,10,25,50,100,250,500]:[10,25,50,100,250,500,1000,2500];for(var i=0;i<a.length;i++)if(x*1.1<=a[i])return a[i];return a[a.length-1]}
+function PU(){return 'https://speed.cloudflare.com/__down?bytes=0&r='+Math.random()}
 function dlUrl(){
   var r='r='+Math.random();
   if($('sv').value==='cf')return 'https://speed.cloudflare.com/__down?bytes=50000000&'+r;
@@ -89,15 +124,25 @@ function mkBlob(){
   for(var i=0;i<a.length;i+=65536)crypto.getRandomValues(a.subarray(i,i+65536));
   return blob=new Blob([a]);
 }
+function latCell(x){
+  if(!x)return['-','\u00a0'];
+  var dt=Math.max(0,x.med-(R.p||0));
+  return[Math.round(x.med)+' ms','puncak '+Math.round(x.max)+' · nilai '+grade(dt)];
+}
 function render(){
   var t=unitTxt();
   $('rd').textContent=R.d?f(cv(R.d.avg))+' '+t:'-';
-  $('rdp').innerHTML=R.d?'puncak '+f(cv(R.d.peak)):'&nbsp;';
+  $('rdp').innerHTML=R.d?'puncak 1 dtk '+f(cv(R.d.peak)):'&nbsp;';
   $('ru').textContent=R.u?f(cv(R.u.avg))+' '+t:'-';
-  $('rup').innerHTML=R.u?'puncak '+f(cv(R.u.peak)):'&nbsp;';
+  $('rup').innerHTML=R.u?'puncak 1 dtk '+f(cv(R.u.peak)):'&nbsp;';
   $('rp').textContent=R.p==null?'-':R.p.toFixed(0)+' ms';
   $('rj').textContent=R.j==null?'-':R.j.toFixed(1)+' ms';
-  gauge(cur);
+  var a=latCell(R.ld),b=latCell(R.lu);
+  $('rld').textContent=a[0];$('rldp').textContent=a[1];
+  $('rlu').textContent=b[0];$('rlup').textContent=b[1];
+  $('rq').textContent=R.q==null?'-':R.q.toFixed(0)+' MB';
+  $('cp').style.display=(R.d||R.u)?'block':'none';
+  gauge(cur);rh();
 }
 function gauge(mbs){
   var d=cv(mbs);
@@ -120,17 +165,41 @@ function chart(){
   var gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,colr+'66');gr.addColorStop(1,colr+'05');
   g.fillStyle=gr;g.fill();
 }
+/* info server (Cloudflare) */
+async function getMeta(){
+  if(meta!==null)return;meta=false;
+  try{
+    var r=await fetch('https://speed.cloudflare.com/meta',{cache:'no-store'}),j=await r.json();
+    var co=typeof j.colo==='object'&&j.colo?(j.colo.iata||''):(j.colo||'');
+    var isp=j.asOrganization||'';
+    meta={co:co,isp:isp};
+    srvTxt='Server Cloudflare '+(IATA[co]?IATA[co]+' ('+co+')':(co||'?'))+(isp?' \u00b7 '+isp:'');
+  }catch(e){srvTxt='Info server tidak tersedia'}
+  $('srv').textContent=srvTxt;
+}
 async function ping(){
-  var t=[];
-  for(var i=0;i<8&&S.on;i++){
-    var s=performance.now();
-    await fetch('https://speed.cloudflare.com/__down?bytes=0&r='+Math.random(),{cache:'no-store'});
+  var t=[],N=16;
+  for(var i=0;i<N&&S.on;i++){
+    var s=performance.now(),r=await fetch(PU(),{cache:'no-store'});
+    if(i===0&&!meta){var h=r.headers.get('cf-meta-colo');if(h){srvTxt='Server Cloudflare '+h;$('srv').textContent=srvTxt}}
     t.push(performance.now()-s);
-    $('pb').style.width=(i+1)/8*100+'%';
+    $('pb').style.width=(i+1)/N*100+'%';
   }
-  t=t.slice(1);var j=0;
-  for(var k=1;k<t.length;k++)j+=Math.abs(t[k]-t[k-1]);
-  R.p=Math.min.apply(null,t);R.j=j/(t.length-1);render();
+  t=t.slice(1);var d=[];
+  for(var k=1;k<t.length;k++)d.push(Math.abs(t[k]-t[k-1]));
+  R.p=med(t);R.j=med(d);render();
+}
+/* latensi saat tes berjalan */
+function lp(t0){
+  var arr=[],on=true;
+  (async function(){
+    while(on&&S.live){
+      var s=performance.now();
+      try{await fetch(PU(),{cache:'no-store'});if(on&&s-t0>1000)arr.push(performance.now()-s)}catch(e){}
+      await new Promise(function(r){setTimeout(r,200)});
+    }
+  })();
+  return function(){on=false;return arr};
 }
 async function dlW(sig){
   while(S.live){
@@ -157,19 +226,23 @@ function ulW(){
 }
 function measure(kind){
   return new Promise(function(res){
-    var dur=+$('du').value*1000,n=+$('cn').value,t0=performance.now(),last=t0,lb=0,ema=0,peak=0,wT=null,wB=0;
+    var dur=+$('du').value*1000,n=+$('cn').value,t0=performance.now(),last=t0,lb=0,ema=0,peak=0,wT=null,wB=0,hist=[];
     S.total=0;S.live=true;S.err=null;S.ctrl=new AbortController();S.xhrs=[];pts=[];smax=0;cur=0;
     colr=kind==='d'?'#22b8ff':'#b36bff';
     $('ga').style.stroke=colr;$('ph').style.color=colr;$('ph').textContent=kind==='d'?'DOWNLOAD':'UPLOAD';
-    var ws=[];
+    var ws=[],stopLat=lp(t0);
     for(var i=0;i<n;i++)ws.push(kind==='d'?dlW(S.ctrl.signal).catch(function(e){if(S.live&&e.name!=='AbortError')S.err=e}):ulW());
     var fin=false;
     function end(){
-      if(fin)return;fin=true;clearInterval(tm);S.live=false;
+      if(fin)return;fin=true;clearInterval(tm);
+      var L=stopLat();S.live=false;
       try{S.ctrl.abort()}catch(e){}S.xhrs.forEach(function(x){try{x.abort()}catch(e){}});
       var now=performance.now(),el=(now-t0)/1000,avg;
       if(wT!==null&&now-wT>1000)avg=(S.total-wB)/((now-wT)/1000);else avg=S.total/Math.max(el,.1);
-      R[kind]={avg:avg/1e6,peak:peak};cur=avg/1e6;render();res();
+      R[kind]={avg:avg/1e6,peak:Math.max(peak,0)};
+      if(L.length)R[kind==='d'?'ld':'lu']={med:med(L),max:Math.max.apply(null,L)};
+      R.q=(R.q||0)+S.total/1e6;
+      cur=avg/1e6;render();res();
     }
     var tm=setInterval(function(){
       var now=performance.now(),dt=(now-last)/1000;if(dt<0.12)return;
@@ -177,11 +250,16 @@ function measure(kind){
       ema=ema?ema*0.55+inst*0.45:inst;cur=ema;
       var el=now-t0;
       if(el>1500&&wT===null){wT=now;wB=S.total}
-      if(wT!==null&&ema>peak)peak=ema;
+      hist.push({t:now,b:S.total});
+      while(hist.length>2&&hist[1].t<=now-1000)hist.shift();
+      if(wT!==null&&now-hist[0].t>=900){
+        var win=(S.total-hist[0].b)/((now-hist[0].t)/1000)/1e6;
+        if(win>peak)peak=win;
+      }
       pts.push(ema);
       var stable=wT!==null&&now-wT>800?(S.total-wB)/((now-wT)/1000)/1e6:ema;
       gauge(ema);$('pb').style.width=Math.min(100,el/dur*100)+'%';
-      $('m').textContent=(kind==='d'?'Terunduh ':'Terkirim ')+(S.total/1e6).toFixed(1)+' MB · stabil '+f(cv(stable))+' '+unitTxt();
+      $('m').textContent=(kind==='d'?'Terunduh ':'Terkirim ')+(S.total/1e6).toFixed(1)+' MB \u00b7 stabil '+f(cv(stable))+' '+unitTxt();
       chart();
       if(el>=dur||!S.on||(S.err&&S.total===0))end();
     },150);
@@ -194,21 +272,94 @@ function errMsg(e){
   if(/Failed to fetch|Load failed|NetworkError/i.test(m))return 'Tidak bisa terhubung ke server (offline, diblokir, atau server tanpa CORS).';
   return m;
 }
+/* layar tetap menyala */
+async function lock(){try{if('wakeLock' in navigator){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',function(){wl=null})}}catch(e){}}
+function unlock(){try{if(wl)wl.release()}catch(e){}wl=null}
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden){if(S.live)S.hid=true}
+  else if(S.on&&!wl)lock();
+});
+/* riwayat */
+function hl(){try{return JSON.parse(localStorage.getItem('st_h')||'[]')}catch(e){return[]}}
+function hs(a){try{localStorage.setItem('st_h',JSON.stringify(a.slice(-60)))}catch(e){}}
+function lbl(){return $('lb').value.trim()||'Tanpa label'}
+function save(){
+  if(!R.d&&!R.u)return;
+  var a=hl();
+  a.push({t:Date.now(),l:lbl(),d:R.d?R.d.avg:null,u:R.u?R.u.avg:null,p:R.p});
+  hs(a);
+  try{localStorage.setItem('st_lb',$('lb').value)}catch(e){}
+}
+function row(box,cells,head){
+  var d=document.createElement('div');d.className='hr'+(head?' h':'');
+  cells.forEach(function(c){var s=document.createElement('span');s.textContent=c;d.appendChild(s)});
+  box.appendChild(d);
+}
+function avg(v,k){var x=v.filter(function(o){return o[k]!=null}).map(function(o){return o[k]});return x.length?x.reduce(function(s,y){return s+y},0)/x.length:null}
+function fv(x,conv){return x==null?'-':f(conv?cv(x):x)}
+function rh(){
+  var a=hl(),box=$('hl'),cb=$('cmp'),t=unitTxt();
+  box.textContent='';cb.textContent='';
+  if(!a.length){box.textContent='Belum ada riwayat.';return}
+  row(cb,['Label','DL '+t,'UL '+t,'Ping'],true);
+  var g={};a.forEach(function(x){(g[x.l]=g[x.l]||[]).push(x)});
+  Object.keys(g).forEach(function(k){var v=g[k];row(cb,[k+' ('+v.length+'x)',fv(avg(v,'d'),1),fv(avg(v,'u'),1),fv(avg(v,'p'),0)])});
+  row(box,['Waktu \u00b7 label','DL','UL','Ping'],true);
+  a.slice().reverse().slice(0,12).forEach(function(x){
+    var w=new Date(x.t).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    row(box,[w+' \u00b7 '+x.l,fv(x.d,1),fv(x.u,1),x.p==null?'-':Math.round(x.p)+' ms']);
+  });
+}
+$('hc').onclick=function(){if(confirm('Hapus semua riwayat tes?')){hs([]);rh()}};
+function summary(){
+  var t=unitTxt(),L=function(o){return o?Math.round(o.med)+' ms (puncak '+Math.round(o.max)+')':'-'};
+  return 'Speed test \u00b7 '+lbl()+' \u00b7 '+new Date().toLocaleString('id-ID')+'\n'+
+    'Download: '+(R.d?f(cv(R.d.avg))+' '+t:'-')+'\nUpload: '+(R.u?f(cv(R.u.avg))+' '+t:'-')+'\n'+
+    'Ping: '+(R.p==null?'-':R.p.toFixed(0)+' ms')+' \u00b7 Jitter: '+(R.j==null?'-':R.j.toFixed(1)+' ms')+'\n'+
+    'Latensi saat unduh: '+L(R.ld)+' \u00b7 saat unggah: '+L(R.lu)+'\n'+
+    'Kuota: '+(R.q==null?'-':R.q.toFixed(0)+' MB')+(srvTxt?'\n'+srvTxt:'');
+}
+$('cp').onclick=async function(){
+  var t=summary();
+  try{await navigator.clipboard.writeText(t);$('m').textContent='Hasil disalin.'}
+  catch(e){
+    var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');$('m').textContent='Hasil disalin.'}catch(x){$('m').textContent='Gagal menyalin.'}
+    ta.remove();
+  }
+};
 async function start(){
-  S.on=true;R={p:null,j:null,d:null,u:null};cur=0;pts=[];smax=0;render();chart();
+  S.on=true;S.hid=false;R=emp();cur=0;pts=[];smax=0;render();chart();
   $('bt').textContent='BERHENTI';$('bt').className='s';$('m').textContent='';
+  lock();
   try{
-    $('ph').style.color='#8a90b0';$('ph').textContent='PING';await ping();
+    $('ph').style.color='#8a90b0';$('ph').textContent='PING';
+    await getMeta();
+    await ping();
     if(S.on)await measure('d');
     if(S.on&&!S.err&&$('uo').value==='1')await measure('u');
     $('ph').textContent=S.on?'SELESAI':'DIHENTIKAN';
-    $('m').textContent=S.err?'Gagal: '+errMsg(S.err):(S.on?'Selesai. Angka besar adalah kecepatan stabil (tanpa 1,5 detik awal).':'Dihentikan.');
+    if(S.err)$('m').textContent='Gagal: '+errMsg(S.err);
+    else if(S.on){
+      $('m').textContent='Selesai. Kuota terpakai \u00b1'+(R.q||0).toFixed(0)+' MB. Angka besar = kecepatan stabil (tanpa 1,5 detik awal).'+(S.hid?' Peringatan: tab sempat tersembunyi, sebaiknya ulangi.':'');
+      save();
+    }else $('m').textContent='Dihentikan.';
   }catch(e){$('ph').textContent='GAGAL';$('m').textContent='Gagal: '+errMsg(e)}
-  S.on=false;S.live=false;$('pb').style.width='100%';$('bt').textContent='MULAI LAGI';$('bt').className='';
+  S.on=false;S.live=false;unlock();render();
+  $('pb').style.width='100%';$('bt').textContent='MULAI LAGI';$('bt').className='';
 }
 $('bt').onclick=function(){S.on?(S.on=false):start()};
 $('un').onchange=render;
 window.addEventListener('resize',chart);
+/* ikon layar utama */
+try{
+  var ic=document.createElement('canvas');ic.width=ic.height=180;var g=ic.getContext('2d');
+  g.fillStyle='#070914';g.fillRect(0,0,180,180);g.lineWidth=16;g.lineCap='round';
+  g.strokeStyle='#232949';g.beginPath();g.arc(90,112,54,Math.PI,2*Math.PI);g.stroke();
+  g.strokeStyle='#22b8ff';g.beginPath();g.arc(90,112,54,Math.PI,Math.PI*1.7);g.stroke();
+  var lk=document.createElement('link');lk.rel='apple-touch-icon';lk.href=ic.toDataURL('image/png');document.head.appendChild(lk);
+}catch(e){}
+try{$('lb').value=localStorage.getItem('st_lb')||''}catch(e){}
 render();chart();
 </script>
 </body>
