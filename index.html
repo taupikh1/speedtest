@@ -80,7 +80,7 @@ button.b3{background:transparent;border:1px solid var(--ln);color:var(--mu);padd
 <button id="cp" class="b2">SALIN HASIL</button>
 <div id="m"></div>
 <details><summary>Riwayat &amp; perbandingan label</summary>
-<div class="hp">Rata-rata per label:</div>
+<div class="hp">Rata-rata per label + server (server beda tidak dicampur):</div>
 <div id="cmp"></div>
 <div class="hp" style="margin-top:12px">Tes terakhir:</div>
 <div id="hl"></div>
@@ -89,6 +89,8 @@ button.b3{background:transparent;border:1px solid var(--ln);color:var(--mu);padd
 <details><summary>Pengaturan</summary>
 <div class="r"><span>Server download</span><select id="sv"><option value="cf">Cloudflare</option><option value="custom">URL sendiri</option></select></div>
 <div class="r" id="ur" style="display:none"><span>URL file</span><input id="url" placeholder="https://.../file.zip"></div>
+<button id="ck" class="b3" style="display:none;margin-top:0">Cek URL</button>
+<div class="hp" id="ckm" style="display:none;margin-bottom:10px"></div>
 <div class="r"><span>Koneksi</span><select id="cn"><option value="4">Multi (4)</option><option value="8">Multi (8)</option><option value="1">Tunggal</option></select></div>
 <div class="r"><span>Durasi / fase</span><select id="du"><option value="8">8 detik</option><option value="12" selected>12 detik</option><option value="20">20 detik</option></select></div>
 <div class="r"><span>Tes upload</span><select id="uo"><option value="1">Ya</option><option value="0">Tidak</option></select></div>
@@ -98,12 +100,17 @@ button.b3{background:transparent;border:1px solid var(--ln);color:var(--mu);padd
 </div>
 <script>
 var $=function(i){return document.getElementById(i)};
-var S={on:false,live:false,total:0,err:null,ctrl:null,xhrs:[],hid:false};
-var cur=0,pts=[],colr='#22b8ff',smax=0,blob=null,meta=null,wl=null,srvTxt='';
+var S={on:false,live:false,total:0,err:null,ctrl:null,xhrs:[],hid:false,acks:[]};
+var cur=0,pts=[],colr='#22b8ff',smax=0,blob=null,meta=null,wl=null,srvTxt='',srvKey='';
 function emp(){return{p:null,j:null,d:null,u:null,ld:null,lu:null,q:null}}
 var R=emp();
 var IATA={CGK:'Jakarta',SIN:'Singapura',KUL:'Kuala Lumpur',HKG:'Hong Kong',DPS:'Bali',BKK:'Bangkok',MNL:'Manila'};
-$('sv').onchange=function(){$('ur').style.display=this.value==='custom'?'flex':'none'};
+$('sv').onchange=function(){
+  var c=this.value==='custom';
+  $('ur').style.display=c?'flex':'none';$('ck').style.display=c?'block':'none';
+  var m=$('ckm');m.style.display=c?'block':'none';
+  if(c)m.textContent='URL harus dari server yang mengizinkan CORS. Ping dan unduh memakai server ini, tapi upload tetap ke Cloudflare.';
+};
 function U(){return $('un').value}
 function cv(mbs){return U()==='MB'?mbs:mbs*8}
 function f(x){return x>=100?x.toFixed(0):x>=10?x.toFixed(1):x.toFixed(2)}
@@ -111,16 +118,23 @@ function unitTxt(){return U()==='MB'?'MB/s':'Mbps'}
 function med(a){if(!a.length)return 0;var b=a.slice().sort(function(x,y){return x-y}),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2}
 function grade(d){return d<=30?'A':d<=60?'B':d<=150?'C':d<=300?'D':'F'}
 function niceMax(x){var a=U()==='MB'?[2,5,10,25,50,100,250,500]:[10,25,50,100,250,500,1000,2500];for(var i=0;i<a.length;i++)if(x*1.1<=a[i])return a[i];return a[a.length-1]}
-function PU(){return 'https://speed.cloudflare.com/__down?bytes=0&r='+Math.random()}
-function dlUrl(){
-  var r='r='+Math.random();
-  if($('sv').value==='cf')return 'https://speed.cloudflare.com/__down?bytes=50000000&'+r;
+function isCustom(){return $('sv').value==='custom'}
+function customUrl(){
   var u=$('url').value.trim();if(!u)throw new Error('Isi URL file dulu');
-  return u+(u.indexOf('?')<0?'?':'&')+r;
+  return u+(u.indexOf('?')<0?'?':'&')+'r='+Math.random();
+}
+async function pingReq(){
+  if(!isCustom())return fetch('https://speed.cloudflare.com/__down?bytes=0&r='+Math.random(),{cache:'no-store'});
+  var c=new AbortController(),r=await fetch(customUrl(),{cache:'no-store',headers:{Range:'bytes=0-0'},signal:c.signal});
+  c.abort();return r;
+}
+function dlUrl(){
+  if(!isCustom())return 'https://speed.cloudflare.com/__down?bytes=50000000&r='+Math.random();
+  return customUrl();
 }
 function mkBlob(){
   if(blob)return blob;
-  var a=new Uint8Array(4*1024*1024);
+  var a=new Uint8Array(2*1024*1024);
   for(var i=0;i<a.length;i+=65536)crypto.getRandomValues(a.subarray(i,i+65536));
   return blob=new Blob([a]);
 }
@@ -167,21 +181,29 @@ function chart(){
 }
 /* info server (Cloudflare) */
 async function getMeta(){
-  if(meta!==null)return;meta=false;
+  meta=null;srvKey='';
+  if(isCustom()){
+    var hn='';try{hn=new URL($('url').value.trim()).hostname}catch(e){}
+    srvKey=hn||'custom';srvTxt='Server sendiri '+(hn||'?');$('srv').textContent=srvTxt;return;
+  }
   try{
     var r=await fetch('https://speed.cloudflare.com/meta',{cache:'no-store'}),j=await r.json();
     var co=typeof j.colo==='object'&&j.colo?(j.colo.iata||''):(j.colo||'');
     var isp=j.asOrganization||'';
-    meta={co:co,isp:isp};
+    meta={co:co,isp:isp};srvKey=co||'?';
     srvTxt='Server Cloudflare '+(IATA[co]?IATA[co]+' ('+co+')':(co||'?'))+(isp?' \u00b7 '+isp:'');
-  }catch(e){srvTxt='Info server tidak tersedia'}
+  }catch(e){srvTxt='Info server tidak tersedia';srvKey=''}
   $('srv').textContent=srvTxt;
+}
+async function chkMeta(){
+  if(isCustom())return srvKey;
+  try{var r=await fetch('https://speed.cloudflare.com/meta',{cache:'no-store'}),j=await r.json();return typeof j.colo==='object'&&j.colo?(j.colo.iata||''):(j.colo||'')}
+  catch(e){return null}
 }
 async function ping(){
   var t=[],N=16;
   for(var i=0;i<N&&S.on;i++){
-    var s=performance.now(),r=await fetch(PU(),{cache:'no-store'});
-    if(i===0&&!meta){var h=r.headers.get('cf-meta-colo');if(h){srvTxt='Server Cloudflare '+h;$('srv').textContent=srvTxt}}
+    var s=performance.now(),r=await pingReq();
     t.push(performance.now()-s);
     $('pb').style.width=(i+1)/N*100+'%';
   }
@@ -195,7 +217,7 @@ function lp(t0){
   (async function(){
     while(on&&S.live){
       var s=performance.now();
-      try{await fetch(PU(),{cache:'no-store'});if(on&&s-t0>1000)arr.push(performance.now()-s)}catch(e){}
+      try{await pingReq();if(on&&s-t0>1000)arr.push(performance.now()-s)}catch(e){}
       await new Promise(function(r){setTimeout(r,200)});
     }
   })();
@@ -217,7 +239,7 @@ function ulW(){
       var x=new XMLHttpRequest(),prev=0;S.xhrs.push(x);
       x.open('POST','https://speed.cloudflare.com/__up');
       x.upload.onprogress=function(e){S.total+=e.loaded-prev;prev=e.loaded};
-      x.onload=loop;
+      x.onload=function(){S.acks.push({t:performance.now(),b:blob.size});loop()};
       x.onerror=function(){if(S.live)S.err=new Error('Upload gagal (jaringan/server)');done()};
       x.onabort=function(){done()};
       x.send(mkBlob());
@@ -227,7 +249,7 @@ function ulW(){
 function measure(kind){
   return new Promise(function(res){
     var dur=+$('du').value*1000,n=+$('cn').value,t0=performance.now(),last=t0,lb=0,ema=0,peak=0,wT=null,wB=0,hist=[];
-    S.total=0;S.live=true;S.err=null;S.ctrl=new AbortController();S.xhrs=[];pts=[];smax=0;cur=0;
+    S.total=0;S.live=true;S.err=null;S.ctrl=new AbortController();S.xhrs=[];S.acks=[];pts=[];smax=0;cur=0;
     colr=kind==='d'?'#22b8ff':'#b36bff';
     $('ga').style.stroke=colr;$('ph').style.color=colr;$('ph').textContent=kind==='d'?'DOWNLOAD':'UPLOAD';
     var ws=[],stopLat=lp(t0);
@@ -239,6 +261,10 @@ function measure(kind){
       try{S.ctrl.abort()}catch(e){}S.xhrs.forEach(function(x){try{x.abort()}catch(e){}});
       var now=performance.now(),el=(now-t0)/1000,avg;
       if(wT!==null&&now-wT>1000)avg=(S.total-wB)/((now-wT)/1000);else avg=S.total/Math.max(el,.1);
+      if(kind==='u'){
+        var w=S.acks.filter(function(a){return a.t>=t0+1500});
+        if(w.length>=4){var tb=0;for(var q=1;q<w.length;q++)tb+=w[q].b;var dq=(w[w.length-1].t-w[0].t)/1000;if(dq>0.5)avg=tb/dq}
+      }
       R[kind]={avg:avg/1e6,peak:Math.max(peak,0)};
       if(L.length)R[kind==='d'?'ld':'lu']={med:med(L),max:Math.max.apply(null,L)};
       R.q=(R.q||0)+S.total/1e6;
@@ -286,7 +312,7 @@ function lbl(){return $('lb').value.trim()||'Tanpa label'}
 function save(){
   if(!R.d&&!R.u)return;
   var a=hl();
-  a.push({t:Date.now(),l:lbl(),d:R.d?R.d.avg:null,u:R.u?R.u.avg:null,p:R.p});
+  a.push({t:Date.now(),l:lbl(),c:srvKey,d:R.d?R.d.avg:null,u:R.u?R.u.avg:null,p:R.p});
   hs(a);
   try{localStorage.setItem('st_lb',$('lb').value)}catch(e){}
 }
@@ -302,12 +328,12 @@ function rh(){
   box.textContent='';cb.textContent='';
   if(!a.length){box.textContent='Belum ada riwayat.';return}
   row(cb,['Label','DL '+t,'UL '+t,'Ping'],true);
-  var g={};a.forEach(function(x){(g[x.l]=g[x.l]||[]).push(x)});
+  var g={};a.forEach(function(x){var kk=x.l+(x.c?' \u00b7 '+x.c:'');(g[kk]=g[kk]||[]).push(x)});
   Object.keys(g).forEach(function(k){var v=g[k];row(cb,[k+' ('+v.length+'x)',fv(avg(v,'d'),1),fv(avg(v,'u'),1),fv(avg(v,'p'),0)])});
   row(box,['Waktu \u00b7 label','DL','UL','Ping'],true);
   a.slice().reverse().slice(0,12).forEach(function(x){
     var w=new Date(x.t).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-    row(box,[w+' \u00b7 '+x.l,fv(x.d,1),fv(x.u,1),x.p==null?'-':Math.round(x.p)+' ms']);
+    row(box,[w+' \u00b7 '+x.l+(x.c?' \u00b7 '+x.c:''),fv(x.d,1),fv(x.u,1),x.p==null?'-':Math.round(x.p)+' ms']);
   });
 }
 $('hc').onclick=function(){if(confirm('Hapus semua riwayat tes?')){hs([]);rh()}};
@@ -335,13 +361,18 @@ async function start(){
   try{
     $('ph').style.color='#8a90b0';$('ph').textContent='PING';
     await getMeta();
+    var k0=srvKey,dOk=false;
     await ping();
-    if(S.on)await measure('d');
+    if(S.on){await measure('d');dOk=!!(S.on&&!S.err&&R.d&&R.d.avg>0)}
     if(S.on&&!S.err&&$('uo').value==='1')await measure('u');
+    var note='';
+    if(S.on){var k1=await chkMeta();if(k0&&k1&&k1!==k0)note=' Peringatan: server berubah saat tes ('+k0+' ke '+k1+'), perbandingan kurang adil.'}
     $('ph').textContent=S.on?'SELESAI':'DIHENTIKAN';
-    if(S.err)$('m').textContent='Gagal: '+errMsg(S.err);
-    else if(S.on){
-      $('m').textContent='Selesai. Kuota terpakai \u00b1'+(R.q||0).toFixed(0)+' MB. Angka besar = kecepatan stabil (tanpa 1,5 detik awal).'+(S.hid?' Peringatan: tab sempat tersembunyi, sebaiknya ulangi.':'');
+    if(S.err){
+      $('m').textContent='Gagal: '+errMsg(S.err)+(dOk?' Hasil download tetap disimpan.':'');
+      if(dOk){R.u=null;save()}
+    }else if(S.on){
+      $('m').textContent='Selesai. Kuota terpakai \u00b1'+(R.q||0).toFixed(0)+' MB. Angka besar = kecepatan stabil (tanpa 1,5 detik awal).'+(S.hid?' Peringatan: tab sempat tersembunyi, sebaiknya ulangi.':'')+note;
       save();
     }else $('m').textContent='Dihentikan.';
   }catch(e){$('ph').textContent='GAGAL';$('m').textContent='Gagal: '+errMsg(e)}
@@ -350,6 +381,20 @@ async function start(){
 }
 $('bt').onclick=function(){S.on?(S.on=false):start()};
 $('un').onchange=render;
+$('ck').onclick=async function(){
+  var m=$('ckm');m.textContent='Memeriksa...';
+  var c=new AbortController();
+  try{
+    var r=await fetch(customUrl(),{cache:'no-store',headers:{Range:'bytes=0-1023'},signal:c.signal});
+    var cr=r.headers.get('content-range'),cl=r.headers.get('content-length'),sz=0;
+    if(cr&&/\/(\d+)$/.test(cr))sz=+RegExp.$1;else if(cl&&r.status===200)sz=+cl;
+    c.abort();
+    if(!r.ok){m.textContent='Server menjawab HTTP '+r.status+'. Periksa URL.';return}
+    m.textContent='OK, bisa dibaca (CORS diizinkan). File: '+(sz?(sz/1e6).toFixed(0)+' MB':'ukuran tidak diketahui')+'.'
+      +(sz&&sz<20e6?' File kecil, akan diunduh berulang; hasil tetap valid.':'')
+      +(r.status===206?'':' Server tidak mendukung Range; ping tetap aman, tapi beberapa server mengirim file penuh sebelum dibatalkan.');
+  }catch(e){m.textContent='Gagal: '+errMsg(e)+' Biasanya karena server tidak mengirim header CORS (Access-Control-Allow-Origin).'}
+};
 window.addEventListener('resize',chart);
 /* ikon layar utama */
 try{
